@@ -8,7 +8,7 @@ INSTALL_DIR="$BASE_DIR"
 CONFIG_DIR="$BASE_DIR"
 CONFIG_FILE="$CONFIG_DIR/config.yaml"
 SERVICE_FILE="/etc/systemd/system/sniproxy.service"
-BINARY_NAME="SNIProxy"
+BINARY_NAME="sniproxy" # Correct binary name to lowercase
 LOG_FILE="$BASE_DIR/sniproxy.log"
 
 print_info() {
@@ -64,33 +64,46 @@ else
     exit 1
 fi
 
-DOWNLOAD_URL="https://github.com/XIU2/SNIProxy/releases/download/${SNIPROXY_VERSION}/SNIProxy-linux-${ARCH}.zip"
-ZIP_FILE="/tmp/SNIProxy-linux-${ARCH}.zip"
+# Correct filename format for Linux tar.gz files
+TAR_FILENAME="sniproxy_linux_${ARCH}.tar.gz"
+DOWNLOAD_URL="https://github.com/XIU2/SNIProxy/releases/download/${SNIPROXY_VERSION}/${TAR_FILENAME}"
+TAR_FILE="/tmp/${TAR_FILENAME}"
 
 print_info "正在从 $DOWNLOAD_URL 下载 SNIProxy ${SNIPROXY_VERSION}..."
-if ! curl -sSL "$DOWNLOAD_URL" -o "$ZIP_FILE"; then
-    print_error "下载 SNIProxy 失败。请检查网络连接或 URL 是否有效。"
-    rm -f "$ZIP_FILE"
+# Use -fL for better error reporting on download failure
+if ! curl -fL "$DOWNLOAD_URL" -o "$TAR_FILE"; then
+    print_error "下载 SNIProxy 失败。请检查网络连接、URL 是否有效或 GitHub Releases 状态。"
     exit 1
 fi
-print_info "下载完成。"
+print_info "下载完成。正在验证文件..."
 
-print_info "正在解压 $ZIP_FILE 到 /tmp..."
-UNZIP_TMP_DIR="/tmp/sniproxy_unzip_$$"
-mkdir -p "$UNZIP_TMP_DIR"
-if ! unzip -q "$ZIP_FILE" -d "$UNZIP_TMP_DIR"; then
+# Test the downloaded tar.gz file integrity before extracting
+# Use tar -tzf to list contents without extracting; exit code indicates validity
+if ! tar -tzf "$TAR_FILE" > /dev/null; then
+    print_error "下载的文件 $TAR_FILE 无效或已损坏。请尝试重新运行脚本。"
+    rm -f "$TAR_FILE"
+    exit 1
+fi
+print_info "文件验证成功。"
+
+print_info "正在解压 $TAR_FILE 到 /tmp..."
+EXTRACT_TMP_DIR="/tmp/sniproxy_extract_$$"
+mkdir -p "$EXTRACT_TMP_DIR"
+# Use tar -xzf to extract
+if ! tar -xzf "$TAR_FILE" -C "$EXTRACT_TMP_DIR"; then
     print_error "解压 SNIProxy 失败。"
-    rm -f "$ZIP_FILE"
-    rm -rf "$UNZIP_TMP_DIR"
+    rm -f "$TAR_FILE"
+    rm -rf "$EXTRACT_TMP_DIR"
     exit 1
 fi
 
-SNIPROXY_BINARY_PATH=$(find "$UNZIP_TMP_DIR" -type f -name "$BINARY_NAME" | head -n 1)
+# Find the binary within the extracted structure
+SNIPROXY_BINARY_PATH=$(find "$EXTRACT_TMP_DIR" -type f -name "$BINARY_NAME" | head -n 1)
 
 if [ -z "$SNIPROXY_BINARY_PATH" ]; then
     print_error "在解压的文件中未找到 $BINARY_NAME 可执行文件。"
-    rm -f "$ZIP_FILE"
-    rm -rf "$UNZIP_TMP_DIR"
+    rm -f "$TAR_FILE"
+    rm -rf "$EXTRACT_TMP_DIR"
     exit 1
 fi
 
@@ -98,8 +111,8 @@ print_info "正在安装 $BINARY_NAME 到 $INSTALL_DIR..."
 mkdir -p "$INSTALL_DIR"
 if ! mv "$SNIPROXY_BINARY_PATH" "$INSTALL_DIR/$BINARY_NAME"; then
     print_error "移动 $BINARY_NAME 到 $INSTALL_DIR 失败。"
-    rm -f "$ZIP_FILE"
-    rm -rf "$UNZIP_TMP_DIR"
+    rm -f "$TAR_FILE"
+    rm -rf "$EXTRACT_TMP_DIR"
     exit 1
 fi
 
@@ -107,8 +120,8 @@ print_info "设置执行权限..."
 chmod +x "$INSTALL_DIR/$BINARY_NAME"
 
 print_info "清理临时文件..."
-rm -f "$ZIP_FILE"
-rm -rf "$UNZIP_TMP_DIR"
+rm -f "$TAR_FILE"
+rm -rf "$EXTRACT_TMP_DIR"
 
 print_info "SNIProxy 安装成功。"
 
