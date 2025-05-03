@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS解锁配置生成器</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: calc(100% - 22px); 
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button.secondary {
+            background-color: #6c757d;
+        }
+        button.secondary:hover {
+            background-color: #5a6268;
+        }
+        #config-output {
+            width: calc(100% - 22px); 
+            height: 300px;
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre;
+            overflow: auto;
+            background-color: #e9ecef;
+        }
+        .output-controls {
+            margin-top: 10px;
+            text-align: right;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none; 
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DNS解锁配置生成器</h1>
+
+        <div class="form-group">
+            <label for="ipv4">输入解锁服务器 IPv4 地址:</label> 
+            <input type="text" id="ipv4" name="ipv4" placeholder="例如: 192.168.1.100">
+        </div>
+
+        <div class="form-group">
+            <label for="ipv6">输入解锁服务器 IPv6 地址:</label> 
+            <input type="text" id="ipv6" name="ipv6" placeholder="例如: 2001:db8::1">
+        </div>
+
+        <button id="generate-stream-list">生成 AdguardHome 自定义规则</button>
+        <button id="generate-config-yaml">生成 SNIProxy 配置</button> 
+
+        
+        <textarea id="config-output" readonly placeholder="配置内容将在此处显示..."></textarea>
+
+        <div class="output-controls">
+            <button id="copy-config" class="secondary">复制到剪贴板</button>
+            <button id="download-config" class="secondary">下载配置</button>
+        </div>
+
+        <div id="status-message" class="status"></div>
+    </div>
+
+    <script>
+        const ipv4Input = document.getElementById('ipv4');
+        const ipv6Input = document.getElementById('ipv6');
+        const generateStreamListButton = document.getElementById('generate-stream-list');
+        const generateConfigYamlButton = document.getElementById('generate-config-yaml');
+        const configOutput = document.getElementById('config-output');
+        const copyButton = document.getElementById('copy-config');
+        const downloadButton = document.getElementById('download-config');
+        const statusMessage = document.getElementById('status-message');
+
+        let currentConfigType = ''; 
+
+        function showStatus(message, isError = false) {
+            statusMessage.textContent = message;
+            statusMessage.className = `status ${isError ? 'error' : 'success'}`;
+            statusMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                statusMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        function displayConfig(configText, type) {
+            configOutput.value = configText;
+            currentConfigType = type; 
+            showStatus(`成功生成 ${type === 'stream' ? 'AdguardHome 自定义规则' : 'SNIProxy 配置'}`);
+        }
+
+        function displayError(errorMessage) {
+            configOutput.value = `错误：\n${errorMessage}`;
+            currentConfigType = '';
+            showStatus(`生成配置时出错: ${errorMessage}`, true);
+        }
+
+        
+        generateStreamListButton.addEventListener('click', async () => {
+            const ipv4 = ipv4Input.value.trim();
+            const ipv6 = ipv6Input.value.trim();
+
+            
+            
+            if (!ipv4 && !ipv6) {
+                showStatus('IPv4 或 IPv6 地址请至少输入一个', true);
+                return;
+            }
+
+            
+            const ipv4Regex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+            if (ipv4 && !ipv4Regex.test(ipv4)) {
+                 showStatus('输入的 IPv4 地址格式无效', true);
+                 return;
+            }
+
+            
+            
+            
+            
+            if (ipv6 && !/^[a-fA-F0-9:.]+$/.test(ipv6)) { 
+                 showStatus('输入的 IPv6 地址格式无效', true);
+                 return;
+                 
+            }
+
+
+            configOutput.value = '正在生成 AdguardHome 自定义规则...';
+            statusMessage.style.display = 'none'; 
+
+            try {
+                const response = await fetch('/api/generate_stream_list', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ ipv4: ipv4, ipv6: ipv6 }), 
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || `HTTP 错误: ${response.status}`);
+                }
+
+                displayConfig(result.config, 'stream');
+
+            } catch (error) {
+                console.error('生成 AdguardHome 自定义规则失败:', error);
+                displayError(error.message || '无法连接到服务器或发生未知错误');
+            }
+        });
+
+        
+        generateConfigYamlButton.addEventListener('click', async () => {
+            configOutput.value = '正在生成 SNIProxy 配置...';
+            statusMessage.style.display = 'none'; 
+
+            try {
+                
+                const response = await fetch('/api/generate_config_yaml');
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || `HTTP 错误: ${response.status}`);
+                }
+
+                displayConfig(result.config, 'yaml');
+
+            } catch (error) {
+                console.error('生成 SNIProxy 配置失败:', error);
+                displayError(error.message || '无法连接到服务器或发生未知错误');
+            }
+        });
+
+        
+        copyButton.addEventListener('click', () => {
+            const configText = configOutput.value;
+            if (!configText || configText.startsWith('错误：') || configText.startsWith('正在生成')) {
+                showStatus('没有可复制的有效配置内容', true);
+                return;
+            }
+            navigator.clipboard.writeText(configText)
+                .then(() => {
+                    showStatus('配置已成功复制到剪贴板');
+                })
+                .catch(err => {
+                    console.error('复制失败:', err);
+                    showStatus('无法复制到剪贴板，请手动复制', true);
+                });
+        });
+
+        
+        downloadButton.addEventListener('click', () => {
+            const configText = configOutput.value;
+            if (!configText || configText.startsWith('错误：') || configText.startsWith('正在生成')) {
+                showStatus('没有可下载的有效配置内容', true);
+                return;
+            }
+
+            let filename = "config_output.txt"; 
+            if (currentConfigType === 'stream') {
+                filename = "stream.txt";
+            } else if (currentConfigType === 'yaml') {
+                filename = "config.yaml";
+            }
+
+            const blob = new Blob([configText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showStatus(`配置已开始下载，文件名为 ${filename}`);
+        });
+
+    </script>
+</body>
+</html>
