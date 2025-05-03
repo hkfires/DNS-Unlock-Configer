@@ -7,7 +7,8 @@
 *   适用于 AdGuardHome 等 DNS 服务器的自定义重写规则。
 *   适用于 SNIProxy (特别是 [XIU2/SNIProxy](https://github.com/XIU2/SNIProxy)) 的 `config.yaml` 配置文件。
 
-本项目旨在简化根据上游列表和用户自定义解锁服务器 IP 生成配置的过程。
+本项目旨在简化根据上游列表和用户自定义解锁服务器 IP 生成配置的过程
+需要完整自建 DNS 解锁服务器教程的，请移步我的博客https://lostip.de/blog/2459742587/
 
 ## 功能
 
@@ -71,7 +72,6 @@
     *   你需要先在某处运行 `app.py` Web 服务器 (可以在本机、部署脚本的服务器或其他可访问的机器上)，记下其可访问的 IP 地址和端口。
 2.  **下载脚本**:
     ```bash
-    # 假设脚本位于项目的根目录，你需要提供其可访问的原始 URL
     # 例如:
     curl -O https://raw.githubusercontent.com/hkfires/DNS-Unlock-Server/main/install_sniproxy.sh
     # 或者:
@@ -92,8 +92,6 @@
     *   同方法一。
 2.  **执行命令**:
     ```bash
-    # 假设脚本位于项目的根目录，你需要提供其可访问的原始 URL
-    # 例如:
     curl -sSL https://raw.githubusercontent.com/hkfires/DNS-Unlock-Server/main/install_sniproxy.sh | sudo bash
     ```
 
