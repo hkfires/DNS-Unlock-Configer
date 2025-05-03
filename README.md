@@ -8,6 +8,7 @@
 *   适用于 SNIProxy (特别是 [XIU2/SNIProxy](https://github.com/XIU2/SNIProxy)) 的 `config.yaml` 配置文件。
 
 本项目旨在简化根据上游列表和用户自定义解锁服务器 IP 生成配置的过程
+
 需要完整自建 DNS 解锁服务器教程的，请移步我的博客https://lostip.de/blog/2459742587/
 
 ## 功能
