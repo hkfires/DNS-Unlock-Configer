@@ -168,16 +168,37 @@ def process_stream_list_web(url, ipv4_address=None, ipv6_address=None):
         print(f"发生意外错误 (Web): {e}")
         raise RuntimeError(f"处理 stream list 时发生意外错误: {e}")
 
-def generate_config_yaml_web(url):
+def generate_config_yaml_web(url, selected_domains=None):
+    """
+    为 Web 界面生成 SNIProxy 配置的 YAML 字符串。
+
+    Args:
+        url (str): 用于获取完整域名列表的上游 URL（如果 selected_domains 未提供）。
+        selected_domains (list, optional): 用户选择的域名列表。如果提供，则使用此列表。
+                                            否则，从 url 获取所有域名。 Defaults to None.
+
+    Returns:
+        str: 生成的 YAML 配置字符串。
+
+    Raises:
+        ConnectionError: 如果无法获取上游列表内容。
+        RuntimeError: 如果发生其他意外错误。
+    """
     try:
-        lines = fetch_content(url)
-        print("正在提取域名 (Web)...")
-        domains = [line.strip() for line in lines if line.strip() and not line.strip().startswith('#')]
-        print(f"提取到 {len(domains)} 个域名 (Web)。")
+        domains_to_use = []
+        if selected_domains is not None and isinstance(selected_domains, list) and selected_domains:
+            print(f"使用提供的 {len(selected_domains)} 个选定域名 (Web)...")
+            domains_to_use = selected_domains
+        else:
+            print("未提供选定域名，将从 URL 获取所有域名 (Web)...")
+            lines = fetch_content(url)
+            print("正在提取所有域名 (Web)...")
+            domains_to_use = [line.strip() for line in lines if line.strip() and not line.strip().startswith('#')]
+            print(f"提取到 {len(domains_to_use)} 个域名 (Web)。")
 
         config_data = {
             'listen_addr': ':443',
-            'rules': domains
+            'rules': domains_to_use
         }
 
         print("正在生成 YAML 配置字符串 (Web)...")
