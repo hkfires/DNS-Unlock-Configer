@@ -3,7 +3,7 @@
 SCRIPT_DIR=$(pwd)
 BASE_DIR="$SCRIPT_DIR/sniproxy"
 
-API_URL="https://dnsconfig.072899.xyz/api/generate_config_yaml"
+API_URL="https://dnsconfig.072899.xyz/api/generate_sniproxy_config"
 INSTALL_DIR="$BASE_DIR"
 CONFIG_DIR="$BASE_DIR"
 CONFIG_FILE="$CONFIG_DIR/config.yaml"
