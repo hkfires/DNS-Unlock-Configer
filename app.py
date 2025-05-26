@@ -1,8 +1,6 @@
-from flask import Flask, request, jsonify, render_template_string, send_from_directory
-import process_streamlist
-import os
-import requests
-import re
+from flask import Flask, request, jsonify, send_from_directory
+import requests, re
+from app_utils import _extract_and_validate_common_params, _generate_adguard_domain_rules, _generate_dnsmasq_domain_rules, _generate_sniproxy_config
 
 STREAM_TEXT_LIST_URL = "https://raw.githubusercontent.com/1-stream/1stream-public-utils/refs/heads/main/stream.text.list"
 
@@ -26,27 +24,14 @@ def serve_web_files(filename):
 def api_generate_adguard_config():
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "无效的请求：需要 JSON 数据。"}), 400
-
-        ipv4_address = data.get('ipv4', '').strip()
-        ipv6_address = data.get('ipv6', '').strip()
-
-        if not ipv4_address and not ipv6_address:
-            return jsonify({"error": "无效的请求：必须提供 IPv4 或 IPv6 地址中的至少一个。"}), 400
-
-        selected_domains = data.get('selected_domains', [])
-
-        if not isinstance(selected_domains, list):
-             return jsonify({"error": "无效的请求：'selected_domains' 必须是一个列表。"}), 400
+        ipv4_address, ipv6_address, selected_domains, error_response = _extract_and_validate_common_params(data)
+        
+        if error_response:
+            return error_response
 
         rules = []
         for domain in selected_domains:
-             if domain:
-                if ipv4_address:
-                    rules.append(f"||{domain}^$dnsrewrite=NOERROR;A;{ipv4_address}")
-                if ipv6_address:
-                    rules.append(f"||{domain}^$dnsrewrite=NOERROR;AAAA;{ipv6_address}")
+            rules.extend(_generate_adguard_domain_rules(domain, ipv4_address, ipv6_address))
 
         result_string = "\n".join(rules)
         return jsonify({"config": result_string})
@@ -59,24 +44,13 @@ def api_generate_adguard_config():
 def api_generate_dnsmasq_config():
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "无效的请求：需要 JSON 数据。"}), 400
+        ipv4_address, ipv6_address, selected_domains, error_response = _extract_and_validate_common_params(data)
 
-        ipv4_address = data.get('ipv4', '').strip()
-        ipv6_address = data.get('ipv6', '').strip()
-
-        if not ipv4_address and not ipv6_address:
-            return jsonify({"error": "无效的请求：必须提供 IPv4 或 IPv6 地址中的至少一个。"}), 400
-
-        selected_domains = data.get('selected_domains', [])
-
-        if not isinstance(selected_domains, list):
-             return jsonify({"error": "无效的请求：'selected_domains' 必须是一个列表。"}), 400
+        if error_response:
+            return error_response
 
         rules = [
-            "# 禁用读取 /etc/resolv.conf",
             "no-resolv",
-            "# 设置默认的上游 DNS",
             "server=1.0.0.1",
             "server=8.8.8.8",
             "cache-size=2048",
@@ -85,11 +59,7 @@ def api_generate_dnsmasq_config():
             ""
         ]
         for domain in selected_domains:
-             if domain:
-                if ipv4_address:
-                    rules.append(f"server=/{domain}/{ipv4_address}")
-                if ipv6_address:
-                    rules.append(f"server=/{domain}/{ipv6_address}")
+            rules.extend(_generate_dnsmasq_domain_rules(domain, ipv4_address, ipv6_address))
 
         result_string = "\n".join(rules)
         return jsonify({"config": result_string})
@@ -125,7 +95,7 @@ def api_generate_sniproxy_config():
          print("收到 GET 请求，将生成包含所有域名的配置。")
 
     try:
-        result_string = process_streamlist.generate_config_yaml_web(
+        result_string = _generate_sniproxy_config(
             STREAM_TEXT_LIST_URL,
             selected_domains=selected_domains
         )
@@ -192,26 +162,7 @@ def api_get_categories():
         traceback.print_exc()
         return jsonify({"error": "处理分类列表时发生内部服务器错误。"}), 500
 
-
 if __name__ == '__main__':
-    try:
-        import flask
-    except ImportError:
-        print("错误：找不到 Flask 模块。")
-        print("请先安装 Flask： pip install Flask")
-        try:
-            import requests
-        except ImportError:
-             print("错误：找不到 requests 模块。")
-             print("请先安装 requests： pip install requests")
-        exit(1)
-    try:
-        import requests
-    except ImportError:
-        print("错误：找不到 requests 模块。")
-        print("请先安装 requests： pip install requests")
-        exit(1)
-
     print("启动 Flask 服务器...")
     print("请在浏览器中访问 http://127.0.0.1:5000")
     app.run(host='0.0.0.0', port=5000, debug=True)

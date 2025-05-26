@@ -1,0 +1,104 @@
+from flask import jsonify
+import requests
+import yaml
+
+def _extract_and_validate_common_params(request_data):
+    if not request_data:
+        return None, None, None, (jsonify({"error": "无效的请求：需要 JSON 数据。"}), 400)
+
+    ipv4_address = request_data.get('ipv4', '').strip()
+    ipv6_address = request_data.get('ipv6', '').strip()
+
+    if not ipv4_address and not ipv6_address:
+        return None, None, None, (jsonify({"error": "无效的请求：必须提供 IPv4 或 IPv6 地址中的至少一个。"}), 400)
+
+    selected_domains = request_data.get('selected_domains', [])
+
+    if not isinstance(selected_domains, list):
+        return None, None, None, (jsonify({"error": "无效的请求：'selected_domains' 必须是一个列表。"}), 400)
+    
+    return ipv4_address, ipv6_address, selected_domains, None
+
+def _generate_adguard_domain_rules(domain, ipv4_address, ipv6_address):
+    rules = []
+    if domain:
+        if ipv4_address:
+            rules.append(f"||{domain}^$dnsrewrite=NOERROR;A;{ipv4_address}")
+        if ipv6_address:
+            rules.append(f"||{domain}^$dnsrewrite=NOERROR;AAAA;{ipv6_address}")
+    return rules
+
+def _generate_dnsmasq_domain_rules(domain, ipv4_address, ipv6_address):
+    rules = []
+    if domain:
+        if ipv4_address:
+            rules.append(f"server=/{domain}/{ipv4_address}")
+        if ipv6_address:
+            rules.append(f"server=/{domain}/{ipv6_address}")
+    return rules
+
+def _fetch_content(url):
+    print(f"正在从 {url} 获取内容...")
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        print("获取内容成功。")
+        return response.text.splitlines()
+    except requests.exceptions.RequestException as e:
+        print(f"错误：无法获取 URL 内容: {e}")
+        raise
+
+def _generate_sniproxy_config(url, selected_domains=None):
+    try:
+        domains_to_use = []
+        if selected_domains is not None and isinstance(selected_domains, list) and selected_domains:
+            print(f"使用提供的 {len(selected_domains)} 个选定域名 (Web)...")
+            domains_to_use = selected_domains
+        else:
+            print("未提供选定域名，将从 URL 获取所有域名 (Web)...")
+            lines = _fetch_content(url)
+            print("正在提取所有域名 (Web)...")
+            domains_to_use = [line.strip() for line in lines if line.strip() and not line.strip().startswith('#')]
+            print(f"提取到 {len(domains_to_use)} 个域名 (Web)。")
+
+        config_data = {
+            'listen_addr': ':443',
+            'rules': domains_to_use
+        }
+
+        print("正在生成 YAML 配置字符串 (Web)...")
+        yaml_string = yaml.dump(config_data, sort_keys=False, allow_unicode=True, default_flow_style=False)
+
+        commented_yaml_string = yaml_string.replace("listen_addr:", "# 监听端口（注意需要引号）\nlisten_addr:", 1)
+        commented_yaml_string = commented_yaml_string.replace("rules:", "# 可选：仅允许指定域名\nrules:", 1)
+
+        comment_block = """# 可选：启用 Socks5 前置代理
+#enable_socks5: true
+# 可选：配置 Socks5 代理地址
+#socks_addr: 127.0.0.1:40000
+# 可选：允许所有域名（会忽略下面的 rules 列表）
+# allow_all_hosts: true
+"""
+        lines_out = commented_yaml_string.splitlines()
+        final_lines = []
+        listen_addr_found = False
+        for line_idx, line_content in enumerate(lines_out):
+            final_lines.append(line_content)
+            if line_content.strip().startswith("listen_addr:") and not listen_addr_found:
+                final_lines.append(comment_block.strip())
+                listen_addr_found = True
+        
+        if not listen_addr_found:
+            final_yaml_string = comment_block + "\n".join(lines_out)
+        else:
+            final_yaml_string = "\n".join(final_lines)
+            
+        print("成功生成 YAML 配置字符串 (Web)。")
+        return final_yaml_string
+
+    except requests.exceptions.RequestException as e:
+        print(f"错误：无法获取 URL 内容 (Web): {e}")
+        raise ConnectionError(f"无法获取上游列表内容: {e}")
+    except Exception as e:
+        print(f"发生意外错误 (Web): {e}")
+        raise RuntimeError(f"生成 config YAML 时发生意外错误: {e}")
