@@ -22,9 +22,8 @@ def serve_web_files(filename):
     except FileNotFoundError:
         return "Error: File not found in web directory.", 404
 
-
-@app.route('/api/generate_stream_list', methods=['POST'])
-def api_generate_stream_list():
+@app.route('/api/generate_adguard_config', methods=['POST'])
+def api_generate_adguard_config():
     try:
         data = request.get_json()
         if not data:
@@ -53,11 +52,11 @@ def api_generate_stream_list():
         return jsonify({"config": result_string})
 
     except Exception as e:
-        print(f"Error in /api/generate_stream_list: {e}")
+        print(f"Error in /api/generate_adguard_config: {e}")
         return jsonify({"error": "生成 AdGuard Home 规则时发生内部服务器错误。"}), 500
 
-@app.route('/api/generate_dnsmasq_list', methods=['POST'])
-def api_generate_dnsmasq_list():
+@app.route('/api/generate_dnsmasq_config', methods=['POST'])
+def api_generate_dnsmasq_config():
     try:
         data = request.get_json()
         if not data:
@@ -96,11 +95,11 @@ def api_generate_dnsmasq_list():
         return jsonify({"config": result_string})
 
     except Exception as e:
-        print(f"Error in /api/generate_dnsmasq_list: {e}")
+        print(f"Error in /api/generate_dnsmasq_config: {e}")
         return jsonify({"error": "生成 Dnsmasq 规则时发生内部服务器错误。"}), 500
 
-@app.route('/api/generate_config_yaml', methods=['GET', 'POST'])
-def api_generate_config_yaml():
+@app.route('/api/generate_sniproxy_config', methods=['GET', 'POST'])
+def api_generate_sniproxy_config():
     selected_domains = None
     if request.method == 'POST':
         try:
@@ -119,7 +118,7 @@ def api_generate_config_yaml():
 
 
         except Exception as e:
-            print(f"Error processing POST request for /api/generate_config_yaml: {e}")
+            print(f"Error processing POST request for /api/generate_sniproxy_config: {e}")
             return jsonify({"error": "处理请求时发生内部服务器错误。"}), 500
 
     elif request.method == 'GET':
@@ -136,7 +135,7 @@ def api_generate_config_yaml():
     except RuntimeError as e:
          return jsonify({"error": f"处理错误: {e}"}), 500
     except Exception as e:
-        print(f"Error in /api/generate_config_yaml: {e}")
+        print(f"Error in /api/generate_sniproxy_config: {e}")
         return jsonify({"error": "生成 SNIProxy 配置时发生内部服务器错误。"}), 500
 
 @app.route('/api/get_categories', methods=['GET'])
