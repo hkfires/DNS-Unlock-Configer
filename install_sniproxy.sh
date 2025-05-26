@@ -56,6 +56,18 @@ if [ -z "$SNIPROXY_VERSION" ] || [ "$SNIPROXY_VERSION" = "null" ]; then
 fi
 print_info "获取到最新版本: $SNIPROXY_VERSION"
 
+print_info "检查现有的 SNIProxy 服务状态..."
+if systemctl is-active --quiet sniproxy.service; then
+    print_info "SNIProxy 服务正在运行。正在停止服务以便更新..."
+    if ! systemctl stop sniproxy.service; then
+        print_error "停止 SNIProxy 服务失败。请手动检查服务状态。"
+        exit 1
+    fi
+    print_info "SNIProxy 服务已停止。"
+else
+    print_info "SNIProxy 服务未运行或不存在，无需停止。"
+fi
+
 ARCH=$(dpkg --print-architecture)
 if [ "$ARCH" = "amd64" ] || [ "$ARCH" = "arm64" ]; then
     print_info "检测到系统架构: $ARCH"
