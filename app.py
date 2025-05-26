@@ -61,7 +61,7 @@ def api_generate_dnsmasq_config():
         for domain in selected_domains:
             rules.extend(_generate_dnsmasq_domain_rules(domain, ipv4_address, ipv6_address))
 
-        result_string = "\n".join(rules)
+        result_string = "\n".join(rules) + "\n"
         return jsonify({"config": result_string})
 
     except Exception as e:
