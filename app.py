@@ -56,6 +56,49 @@ def api_generate_stream_list():
         print(f"Error in /api/generate_stream_list: {e}")
         return jsonify({"error": "生成 AdGuard Home 规则时发生内部服务器错误。"}), 500
 
+@app.route('/api/generate_dnsmasq_list', methods=['POST'])
+def api_generate_dnsmasq_list():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "无效的请求：需要 JSON 数据。"}), 400
+
+        ipv4_address = data.get('ipv4', '').strip()
+        ipv6_address = data.get('ipv6', '').strip()
+
+        if not ipv4_address and not ipv6_address:
+            return jsonify({"error": "无效的请求：必须提供 IPv4 或 IPv6 地址中的至少一个。"}), 400
+
+        selected_domains = data.get('selected_domains', [])
+
+        if not isinstance(selected_domains, list):
+             return jsonify({"error": "无效的请求：'selected_domains' 必须是一个列表。"}), 400
+
+        rules = [
+            "# 禁用读取 /etc/resolv.conf",
+            "no-resolv",
+            "# 设置默认的上游 DNS",
+            "server=1.0.0.1",
+            "server=8.8.8.8",
+            "cache-size=2048",
+            "local-ttl=60",
+            "listen-address=127.0.0.1",
+            ""
+        ]
+        for domain in selected_domains:
+             if domain:
+                if ipv4_address:
+                    rules.append(f"server=/{domain}/{ipv4_address}")
+                if ipv6_address:
+                    rules.append(f"server=/{domain}/{ipv6_address}")
+
+        result_string = "\n".join(rules)
+        return jsonify({"config": result_string})
+
+    except Exception as e:
+        print(f"Error in /api/generate_dnsmasq_list: {e}")
+        return jsonify({"error": "生成 Dnsmasq 规则时发生内部服务器错误。"}), 500
+
 @app.route('/api/generate_config_yaml', methods=['GET', 'POST'])
 def api_generate_config_yaml():
     selected_domains = None
