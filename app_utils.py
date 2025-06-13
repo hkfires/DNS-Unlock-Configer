@@ -37,6 +37,15 @@ def _generate_dnsmasq_domain_rules(domain, ipv4_address, ipv6_address):
             rules.append(f"server=/{domain}/{ipv6_address}")
     return rules
 
+def _generate_smardns_domain_rules(domain, ipv4_address, ipv6_address):
+    rules = []
+    if domain:
+        if ipv4_address:
+            rules.append(f"nameserver /{domain}/{ipv4_address}")
+        if ipv6_address:
+            rules.append(f"nameserver /{domain}/{ipv6_address}")
+    return rules
+
 def _fetch_content(url):
     print(f"正在从 {url} 获取内容...")
     try:

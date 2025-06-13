@@ -3,6 +3,7 @@ const ipv6Input = document.getElementById('ipv6');
 const generateAdguardConfigButton = document.getElementById('generate-adguard-config');
 const generateSniproxyConfigButton = document.getElementById('generate-sniproxy-config');
 const generateDnsmasqConfigButton = document.getElementById('generate-dnsmasq-config');
+const generateSmartdnsConfigButton = document.getElementById('generate-smartdns-config');
 const configOutput = document.getElementById('config-output');
 const copyButton = document.getElementById('copy-config');
 const downloadButton = document.getElementById('download-config');
@@ -11,7 +12,6 @@ const fetchCategoriesButton = document.getElementById('fetch-categories');
 const categoryCheckboxesContainer = document.getElementById('category-checkboxes');
 const selectAllNewButton = document.getElementById('select-all-categories-new');
 const deselectAllNewButton = document.getElementById('deselect-all-categories-new');
-
 
 let currentConfigType = '';
 let categoryList = [];
@@ -38,7 +38,8 @@ function displayConfig(configText, type) {
     currentConfigType = type;
     const typeName = type === 'adguard' ? 'AdguardHome 自定义规则' :
         (type === 'sniproxy' ? 'SNIProxy 配置' :
-            (type === 'dnsmasq' ? 'Dnsmasq 配置' : '配置'));
+            (type === 'dnsmasq' ? 'Dnsmasq 配置' :
+                (type === 'smartdns' ? 'SmartDNS 配置' : '配置')));
     showStatus(`成功生成 ${typeName}`);
 }
 
@@ -452,6 +453,87 @@ generateDnsmasqConfigButton.addEventListener('click', async () => {
     }
 });
 
+generateSmartdnsConfigButton.addEventListener('click', async () => {
+    const ipv4 = ipv4Input.value.trim();
+    const ipv6 = ipv6Input.value.trim();
+
+    if (!ipv4 && !ipv6) {
+        showStatus('IPv4 或 IPv6 地址请至少输入一个', true);
+        return;
+    }
+
+    const ipv4Regex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+    if (ipv4 && !ipv4Regex.test(ipv4)) {
+        showStatus('输入的 IPv4 地址格式无效', true);
+        return;
+    }
+    if (ipv6 && !/^[a-fA-F0-9:]+$/.test(ipv6.replace(/\./g, ''))) {
+
+    }
+
+    let orderedSelectedDomains = [];
+    let seenDomains = new Set();
+
+    if (!categoryList || categoryList.length === 0 || Object.keys(categoryDomainLookup).length === 0) {
+        showStatus('请先点击“获取并显示分类”并确保分类已加载', true);
+        return;
+    }
+
+    categoryList.forEach((majorCat, majorIndex) => {
+        if (majorCat.minors && majorCat.minors.length > 0) {
+            majorCat.minors.forEach(minorCat => {
+                const minorCheckboxId = `minor-${majorIndex}-${minorCat.name.replace(/\s+/g, '-')}`;
+                const minorCheckbox = document.getElementById(minorCheckboxId);
+
+                if (minorCheckbox && minorCheckbox.checked) {
+                    const domainsForCategory = categoryDomainLookup[minorCat.name];
+                    if (domainsForCategory) {
+                        domainsForCategory.forEach(domain => {
+                            if (!seenDomains.has(domain)) {
+                                orderedSelectedDomains.push(domain);
+                                seenDomains.add(domain);
+                            }
+                        });
+                    }
+                }
+            });
+        }
+    });
+
+    if (orderedSelectedDomains.length === 0) {
+        showStatus('请至少选择一个包含有效域名的分类', true);
+        return;
+    }
+
+    configOutput.value = '正在生成 SmartDNS 配置...';
+    statusMessage.style.display = 'none';
+
+    try {
+        const response = await fetch('/api/generate_smartdns_config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ipv4: ipv4,
+                ipv6: ipv6,
+                selected_domains: orderedSelectedDomains
+            }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || `HTTP 错误: ${response.status}`);
+        }
+
+        displayConfig(result.config, 'smartdns');
+
+    } catch (error) {
+        displayError(error.message || '无法连接到服务器或发生未知错误');
+    }
+});
+
 copyButton.addEventListener('click', () => {
     const configText = configOutput.value;
     if (!configText || configText.startsWith('错误：') || configText.startsWith('正在生成')) {
@@ -481,6 +563,8 @@ downloadButton.addEventListener('click', () => {
         filename = "config.yaml";
     } else if (currentConfigType === 'dnsmasq') {
         filename = "dnsmasq.conf";
+    } else if (currentConfigType === 'smartdns') {
+        filename = "smartdns.conf";
     }
 
     const blob = new Blob([configText], { type: 'text/plain;charset=utf-8' });

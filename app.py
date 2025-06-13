@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 import requests, re
-from app_utils import _extract_and_validate_common_params, _generate_adguard_domain_rules, _generate_dnsmasq_domain_rules, _generate_sniproxy_config
+from app_utils import _extract_and_validate_common_params, _generate_adguard_domain_rules, _generate_dnsmasq_domain_rules, _generate_smardns_domain_rules, _generate_sniproxy_config
 
 STREAM_TEXT_LIST_URL = "https://raw.githubusercontent.com/1-stream/1stream-public-utils/refs/heads/main/stream.text.list"
 
@@ -67,6 +67,34 @@ def api_generate_dnsmasq_config():
     except Exception as e:
         print(f"Error in /api/generate_dnsmasq_config: {e}")
         return jsonify({"error": "生成 Dnsmasq 规则时发生内部服务器错误。"}), 500
+
+@app.route('/api/generate_smartdns_config', methods=['POST'])
+def api_generate_smartdns_config():
+    try:
+        data = request.get_json()
+        ipv4_address, ipv6_address, selected_domains, error_response = _extract_and_validate_common_params(data)
+
+        if error_response:
+            return error_response
+
+        rules = [
+            "bind [::]:53",
+            "server 1.0.0.1",
+            "server 8.8.8.8",
+            "cache-size 32768",
+            "cache-persist yes",
+            "cache-file /etc/smartdns/cache/file",
+            ""
+        ]
+        for domain in selected_domains:
+            rules.extend(_generate_smardns_domain_rules(domain, ipv4_address, ipv6_address))
+
+        result_string = "\n".join(rules) + "\n"
+        return jsonify({"config": result_string})
+
+    except Exception as e:
+        print(f"Error in /api/generate_smartdns_config: {e}")
+        return jsonify({"error": "生成 SmartDNS 规则时发生内部服务器错误。"}), 500
 
 @app.route('/api/generate_sniproxy_config', methods=['GET', 'POST'])
 def api_generate_sniproxy_config():
