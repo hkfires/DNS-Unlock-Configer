@@ -136,6 +136,15 @@ def api_generate_sniproxy_config():
         print(f"Error in /api/generate_sniproxy_config: {e}")
         return jsonify({"error": "生成 SNIProxy 配置时发生内部服务器错误。"}), 500
 
+@app.route('/api/generate_sniproxy_config_all', methods=['GET'])
+def api_generate_sniproxy_config_all():
+    try:
+        config_content = 'listen_addr: ":443"\nallow_all_hosts: true\n'
+        return jsonify({"config": config_content})
+    except Exception as e:
+        print(f"Error in /api/generate_sniproxy_config_all: {e}")
+        return jsonify({"error": "生成 SNIProxy (允许所有) 配置时发生内部服务器错误。"}), 500
+
 @app.route('/api/get_categories', methods=['GET'])
 def api_get_categories():
     try:

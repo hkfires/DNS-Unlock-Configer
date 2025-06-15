@@ -159,12 +159,14 @@ button:hover {
 
 
 #fetch-categories,
-#generate-sniproxy-config {
+#generate-sniproxy-config,
+#generate-sniproxy-config-all {
     background-color: #28a745;
 }
 
 #fetch-categories:hover,
-#generate-sniproxy-config:hover {
+#generate-sniproxy-config:hover,
+#generate-sniproxy-config-all:hover {
     background-color: #218838;
 }
 

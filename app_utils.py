@@ -2,6 +2,14 @@ from flask import jsonify
 import requests
 import yaml
 
+class QuotedString(str):
+    pass
+
+def quoted_presenter(dumper, data):
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='"')
+
+yaml.add_representer(QuotedString, quoted_presenter)
+
 def _extract_and_validate_common_params(request_data):
     if not request_data:
         return None, None, None, (jsonify({"error": "无效的请求：需要 JSON 数据。"}), 400)
@@ -71,39 +79,15 @@ def _generate_sniproxy_config(url, selected_domains=None):
             print(f"提取到 {len(domains_to_use)} 个域名 (Web)。")
 
         config_data = {
-            'listen_addr': ':443',
+            'listen_addr': QuotedString(":443"),
             'rules': domains_to_use
         }
 
         print("正在生成 YAML 配置字符串 (Web)...")
         yaml_string = yaml.dump(config_data, sort_keys=False, allow_unicode=True, default_flow_style=False)
 
-        commented_yaml_string = yaml_string.replace("listen_addr:", "# 监听端口（注意需要引号）\nlisten_addr:", 1)
-        commented_yaml_string = commented_yaml_string.replace("rules:", "# 可选：仅允许指定域名\nrules:", 1)
-
-        comment_block = """# 可选：启用 Socks5 前置代理
-#enable_socks5: true
-# 可选：配置 Socks5 代理地址
-#socks_addr: 127.0.0.1:40000
-# 可选：允许所有域名（会忽略下面的 rules 列表）
-# allow_all_hosts: true
-"""
-        lines_out = commented_yaml_string.splitlines()
-        final_lines = []
-        listen_addr_found = False
-        for line_idx, line_content in enumerate(lines_out):
-            final_lines.append(line_content)
-            if line_content.strip().startswith("listen_addr:") and not listen_addr_found:
-                final_lines.append(comment_block.strip())
-                listen_addr_found = True
-        
-        if not listen_addr_found:
-            final_yaml_string = comment_block + "\n".join(lines_out)
-        else:
-            final_yaml_string = "\n".join(final_lines)
-            
         print("成功生成 YAML 配置字符串 (Web)。")
-        return final_yaml_string
+        return yaml_string
 
     except requests.exceptions.RequestException as e:
         print(f"错误：无法获取 URL 内容 (Web): {e}")

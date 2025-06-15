@@ -2,6 +2,7 @@ const ipv4Input = document.getElementById('ipv4');
 const ipv6Input = document.getElementById('ipv6');
 const generateAdguardConfigButton = document.getElementById('generate-adguard-config');
 const generateSniproxyConfigButton = document.getElementById('generate-sniproxy-config');
+const generateSniproxyConfigAllButton = document.getElementById('generate-sniproxy-config-all');
 const generateDnsmasqConfigButton = document.getElementById('generate-dnsmasq-config');
 const generateSmartdnsConfigButton = document.getElementById('generate-smartdns-config');
 const configOutput = document.getElementById('config-output');
@@ -359,6 +360,25 @@ generateSniproxyConfigButton.addEventListener('click', async () => {
             },
             body: JSON.stringify({ selected_domains: orderedSelectedDomains })
         });
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || `HTTP 错误: ${response.status}`);
+        }
+
+        displayConfig(result.config, 'sniproxy');
+
+    } catch (error) {
+        displayError(error.message || '无法连接到服务器或发生未知错误');
+    }
+});
+
+generateSniproxyConfigAllButton.addEventListener('click', async () => {
+    configOutput.value = '正在生成 SNIProxy 配置...';
+    statusMessage.style.display = 'none';
+
+    try {
+        const response = await fetch('/api/generate_sniproxy_config_all');
         const result = await response.json();
 
         if (!response.ok) {
