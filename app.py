@@ -99,6 +99,7 @@ def api_generate_smartdns_config():
 @app.route('/api/generate_sniproxy_config', methods=['GET', 'POST'])
 def api_generate_sniproxy_config():
     selected_domains = None
+    enable_alice_socks = False
     if request.method == 'POST':
         try:
             data = request.get_json()
@@ -106,6 +107,7 @@ def api_generate_sniproxy_config():
                 return jsonify({"error": "无效的请求：需要 JSON 数据。"}), 400
 
             selected_domains = data.get('selected_domains')
+            enable_alice_socks = data.get('enable_alice_socks', False)
 
             if selected_domains is None:
                  return jsonify({"error": "无效的请求：请求体中缺少 'selected_domains' 字段。"}), 400
@@ -125,7 +127,8 @@ def api_generate_sniproxy_config():
     try:
         result_string = _generate_sniproxy_config(
             STREAM_TEXT_LIST_URL,
-            selected_domains=selected_domains
+            selected_domains=selected_domains,
+            enable_alice_socks=enable_alice_socks
         )
         return jsonify({"config": result_string})
     except ConnectionError as e:
@@ -136,11 +139,18 @@ def api_generate_sniproxy_config():
         print(f"Error in /api/generate_sniproxy_config: {e}")
         return jsonify({"error": "生成 SNIProxy 配置时发生内部服务器错误。"}), 500
 
-@app.route('/api/generate_sniproxy_config_all', methods=['GET'])
+@app.route('/api/generate_sniproxy_config_all', methods=['POST'])
 def api_generate_sniproxy_config_all():
     try:
-        config_content = 'listen_addr: ":443"\nallow_all_hosts: true\n'
-        return jsonify({"config": config_content})
+        data = request.get_json()
+        enable_alice_socks = data.get('enable_alice_socks', False) if data else False
+
+        result_string = _generate_sniproxy_config(
+            url=STREAM_TEXT_LIST_URL,
+            allow_all_hosts=True,
+            enable_alice_socks=enable_alice_socks
+        )
+        return jsonify({"config": result_string})
     except Exception as e:
         print(f"Error in /api/generate_sniproxy_config_all: {e}")
         return jsonify({"error": "生成 SNIProxy (允许所有) 配置时发生内部服务器错误。"}), 500

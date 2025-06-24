@@ -13,6 +13,7 @@ const fetchCategoriesButton = document.getElementById('fetch-categories');
 const categoryCheckboxesContainer = document.getElementById('category-checkboxes');
 const selectAllNewButton = document.getElementById('select-all-categories-new');
 const deselectAllNewButton = document.getElementById('deselect-all-categories-new');
+const enableAliceSocksCheckbox = document.getElementById('enable-alice-socks');
 
 let currentConfigType = '';
 let categoryList = [];
@@ -358,7 +359,10 @@ generateSniproxyConfigButton.addEventListener('click', async () => {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ selected_domains: orderedSelectedDomains })
+            body: JSON.stringify({
+                selected_domains: orderedSelectedDomains,
+                enable_alice_socks: enableAliceSocksCheckbox.checked
+            })
         });
         const result = await response.json();
 
@@ -378,7 +382,15 @@ generateSniproxyConfigAllButton.addEventListener('click', async () => {
     statusMessage.style.display = 'none';
 
     try {
-        const response = await fetch('/api/generate_sniproxy_config_all');
+        const response = await fetch('/api/generate_sniproxy_config_all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                enable_alice_socks: enableAliceSocksCheckbox.checked
+            })
+        });
         const result = await response.json();
 
         if (!response.ok) {

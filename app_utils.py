@@ -65,23 +65,32 @@ def _fetch_content(url):
         print(f"错误：无法获取 URL 内容: {e}")
         raise
 
-def _generate_sniproxy_config(url, selected_domains=None):
+def _generate_sniproxy_config(url, selected_domains=None, enable_alice_socks=False, allow_all_hosts=False):
     try:
-        domains_to_use = []
-        if selected_domains is not None and isinstance(selected_domains, list) and selected_domains:
-            print(f"使用提供的 {len(selected_domains)} 个选定域名 (Web)...")
-            domains_to_use = selected_domains
-        else:
-            print("未提供选定域名，将从 URL 获取所有域名 (Web)...")
-            lines = _fetch_content(url)
-            print("正在提取所有域名 (Web)...")
-            domains_to_use = [line.strip() for line in lines if line.strip() and not line.strip().startswith('#')]
-            print(f"提取到 {len(domains_to_use)} 个域名 (Web)。")
-
         config_data = {
             'listen_addr': QuotedString(":443"),
-            'rules': domains_to_use
         }
+
+        if enable_alice_socks:
+            config_data['enable_socks5'] = True
+            config_data['socks_addr'] = QuotedString("[2a14:67c0:118::1]:35000")
+            config_data['socks_username'] = "alice"
+            config_data['socks_password'] = "alice..MVM"
+
+        if allow_all_hosts:
+            config_data['allow_all_hosts'] = True
+        else:
+            domains_to_use = []
+            if selected_domains is not None and isinstance(selected_domains, list) and selected_domains:
+                print(f"使用提供的 {len(selected_domains)} 个选定域名 (Web)...")
+                domains_to_use = selected_domains
+            else:
+                print("未提供选定域名，将从 URL 获取所有域名 (Web)...")
+                lines = _fetch_content(url)
+                print("正在提取所有域名 (Web)...")
+                domains_to_use = [line.strip() for line in lines if line.strip() and not line.strip().startswith('#')]
+                print(f"提取到 {len(domains_to_use)} 个域名 (Web)。")
+            config_data['rules'] = domains_to_use
 
         print("正在生成 YAML 配置字符串 (Web)...")
         yaml_string = yaml.dump(config_data, sort_keys=False, allow_unicode=True, default_flow_style=False)
