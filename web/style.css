@@ -116,8 +116,10 @@ button:hover {
     font-size: 1em;
 }
 
+#fetch-categories,
 #select-all-categories-new,
-#deselect-all-categories-new {
+#deselect-all-categories-new,
+#select-alice-whitelist {
     padding: 5px 10px;
     font-size: 0.9em;
     margin-top: 5px;
@@ -157,26 +159,27 @@ button:hover {
     justify-content: flex-end;
 }
 
-
-#fetch-categories,
 #generate-sniproxy-config,
 #generate-sniproxy-config-all {
     background-color: #28a745;
 }
 
-#fetch-categories:hover,
 #generate-sniproxy-config:hover,
 #generate-sniproxy-config-all:hover {
     background-color: #218838;
 }
 
+#fetch-categories,
 #select-all-categories-new,
-#deselect-all-categories-new {
+#deselect-all-categories-new,
+#select-alice-whitelist {
     background-color: #6c757d;
 }
 
+#fetch-categories:hover,
 #select-all-categories-new:hover,
-#deselect-all-categories-new:hover {
+#deselect-all-categories-new:hover,
+#select-alice-whitelist:hover {
     background-color: #5a6268;
 }
 

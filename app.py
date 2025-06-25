@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 import requests, re
-from app_utils import _extract_and_validate_common_params, _generate_adguard_domain_rules, _generate_dnsmasq_domain_rules, _generate_smardns_domain_rules, _generate_sniproxy_config
+from app_utils import _extract_and_validate_common_params, _generate_adguard_domain_rules, _generate_dnsmasq_domain_rules, _generate_smardns_domain_rules, _generate_sniproxy_config, _generate_xray_domain_list
 
 STREAM_TEXT_LIST_URL = "https://raw.githubusercontent.com/1-stream/1stream-public-utils/refs/heads/main/stream.text.list"
 
@@ -155,6 +155,29 @@ def api_generate_sniproxy_config_all():
         print(f"Error in /api/generate_sniproxy_config_all: {e}")
         return jsonify({"error": "生成 SNIProxy (允许所有) 配置时发生内部服务器错误。"}), 500
 
+@app.route('/api/generate_xray_config', methods=['POST'])
+def api_generate_xray_config():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "无效的请求：需要 JSON 数据。"}), 400
+
+        selected_domains = data.get('selected_domains')
+
+        if selected_domains is None:
+            return jsonify({"error": "无效的请求：请求体中缺少 'selected_domains' 字段。"}), 400
+        if not isinstance(selected_domains, list):
+            return jsonify({"error": "无效的请求：'selected_domains' 必须是一个列表。"}), 400
+        if not selected_domains:
+            return jsonify({"error": "无效的请求：'selected_domains' 列表不能为空，请至少选择一个分类。"}), 400
+
+        result_string = _generate_xray_domain_list(selected_domains)
+        return jsonify({"config": result_string})
+
+    except Exception as e:
+        print(f"Error in /api/generate_xray_config: {e}")
+        return jsonify({"error": "生成 Xray 规则时发生内部服务器错误。"}), 500
+
 @app.route('/api/get_categories', methods=['GET'])
 def api_get_categories():
     try:
@@ -179,6 +202,8 @@ def api_get_categories():
 
             if major_match:
                 major_name = major_match.group(1).strip()
+                if major_name == "Global Plaform":
+                    major_name = "Global Platform"
                 current_major_category_obj = {"name": major_name, "minors": []}
                 categories_list.append(current_major_category_obj)
                 current_minor_category_obj = None

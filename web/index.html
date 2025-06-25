@@ -23,8 +23,10 @@
 
         <div class="form-group category-layout">
             <div class="category-side-controls">
-                <button id="select-all-categories-new">全选</button>
-                <button id="deselect-all-categories-new">清除</button>
+                <button id="fetch-categories">获取并显示分类</button>
+                <button id="select-all-categories-new">选择全部规则</button>
+                <button id="select-alice-whitelist">选择Alice白名单</button>
+                <button id="deselect-all-categories-new">清除选择</button>
             </div>
             <div id="category-checkboxes">
                 <p>请先点击“获取并显示分类”</p>
@@ -32,20 +34,21 @@
         </div>
         <div class="main-actions-container">
             <div class="top-buttons-group">
-                <button id="fetch-categories">获取并显示分类</button>
-                <span style="display: inline-flex; align-items: center; vertical-align: middle; flex-wrap: wrap; gap: 8px;">
-                    <button id="generate-sniproxy-config">生成 SNIProxy 配置 (自选)</button>
-                    <button id="generate-sniproxy-config-all">生成 SNIProxy 配置 (所有)</button>
-                    <span style="display: inline-flex; align-items: center; margin-left: 8px;">
-                        <input type="checkbox" id="enable-alice-socks" name="enable-alice-socks" style="transform: scale(1.2);">
-                        <label for="enable-alice-socks" style="margin-left: 4px;">启用Alice公共出口</label>
-                    </span>
+                <button id="generate-sniproxy-config">生成 SNIProxy 配置 (自选)</button>
+                <button id="generate-sniproxy-config-all">生成 SNIProxy 配置 (所有)</button>
+                <span style="display: inline-flex; align-items: center; margin-left: 8px;">
+                    <input type="checkbox" id="enable-alice-socks" name="enable-alice-socks" style="transform: scale(1.2);">
+                    <label for="enable-alice-socks" style="margin-left: 4px;">启用Alice公共出口</label>
                 </span>
             </div>
             <div class="generate-buttons-group">
                 <button id="generate-adguard-config">生成 AdguardHome 自定义规则</button>
                 <button id="generate-dnsmasq-config">生成 Dnsmasq 配置</button>
                 <button id="generate-smartdns-config">生成 SmartDNS 配置</button>
+            </div>
+            <div class="generate-buttons-group">
+                <button id="generate-xray-alice-public-config">生成 Alice 出口配置</button>
+                <button id="generate-xray-config">生成 Xray 域名规则</button>
             </div>
         </div>
 

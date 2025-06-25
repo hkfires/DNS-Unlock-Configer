@@ -5,6 +5,8 @@ const generateSniproxyConfigButton = document.getElementById('generate-sniproxy-
 const generateSniproxyConfigAllButton = document.getElementById('generate-sniproxy-config-all');
 const generateDnsmasqConfigButton = document.getElementById('generate-dnsmasq-config');
 const generateSmartdnsConfigButton = document.getElementById('generate-smartdns-config');
+const generateXrayConfigButton = document.getElementById('generate-xray-config');
+const generateXrayAlicePublicConfigButton = document.getElementById('generate-xray-alice-public-config');
 const configOutput = document.getElementById('config-output');
 const copyButton = document.getElementById('copy-config');
 const downloadButton = document.getElementById('download-config');
@@ -13,6 +15,7 @@ const fetchCategoriesButton = document.getElementById('fetch-categories');
 const categoryCheckboxesContainer = document.getElementById('category-checkboxes');
 const selectAllNewButton = document.getElementById('select-all-categories-new');
 const deselectAllNewButton = document.getElementById('deselect-all-categories-new');
+const selectAliceWhitelistButton = document.getElementById('select-alice-whitelist');
 const enableAliceSocksCheckbox = document.getElementById('enable-alice-socks');
 
 let currentConfigType = '';
@@ -41,7 +44,9 @@ function displayConfig(configText, type) {
     const typeName = type === 'adguard' ? 'AdguardHome 自定义规则' :
         (type === 'sniproxy' ? 'SNIProxy 配置' :
             (type === 'dnsmasq' ? 'Dnsmasq 配置' :
-                (type === 'smartdns' ? 'SmartDNS 配置' : '配置')));
+                (type === 'smartdns' ? 'SmartDNS 配置' :
+                    (type === 'xray' ? 'Xray 域名规则' :
+                        (type === 'xray-alice-public' ? 'Alice 出口配置' : '配置')))));
     showStatus(`成功生成 ${typeName}`);
 }
 
@@ -597,6 +602,10 @@ downloadButton.addEventListener('click', () => {
         filename = "dnsmasq.conf";
     } else if (currentConfigType === 'smartdns') {
         filename = "smartdns.conf";
+    } else if (currentConfigType === 'xray') {
+        filename = "xray_rules.txt";
+    } else if (currentConfigType === 'xray-alice-public') {
+        filename = "xray_alice_public.json";
     }
 
     const blob = new Blob([configText], { type: 'text/plain;charset=utf-8' });
@@ -622,9 +631,158 @@ selectAllNewButton.addEventListener('click', () => {
     });
 });
 
+if (generateXrayConfigButton) {
+    generateXrayConfigButton.addEventListener('click', async () => {
+        let orderedSelectedDomains = [];
+        let seenDomains = new Set();
+
+        if (!categoryList || categoryList.length === 0 || Object.keys(categoryDomainLookup).length === 0) {
+            showStatus('请先点击“获取并显示分类”并确保分类已加载', true);
+            return;
+        }
+
+        categoryList.forEach((majorCat, majorIndex) => {
+            if (majorCat.minors && majorCat.minors.length > 0) {
+                majorCat.minors.forEach(minorCat => {
+                    const minorCheckboxId = `minor-${majorIndex}-${minorCat.name.replace(/\s+/g, '-')}`;
+                    const minorCheckbox = document.getElementById(minorCheckboxId);
+
+                    if (minorCheckbox && minorCheckbox.checked) {
+                        const domainsForCategory = categoryDomainLookup[minorCat.name];
+                        if (domainsForCategory) {
+                            domainsForCategory.forEach(domain => {
+                                if (!seenDomains.has(domain)) {
+                                    orderedSelectedDomains.push(domain);
+                                    seenDomains.add(domain);
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        });
+
+        if (orderedSelectedDomains.length === 0) {
+            showStatus('请至少选择一个包含有效域名的分类', true);
+            return;
+        }
+
+        configOutput.value = '正在生成 Xray 规则...';
+        statusMessage.style.display = 'none';
+
+        try {
+            const response = await fetch('/api/generate_xray_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    selected_domains: orderedSelectedDomains
+                }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || `HTTP 错误: ${response.status}`);
+            }
+
+            displayConfig(result.config, 'xray');
+
+        } catch (error) {
+            displayError(error.message || '无法连接到服务器或发生未知错误');
+        }
+    });
+}
+
 deselectAllNewButton.addEventListener('click', () => {
     categoryCheckboxesContainer.querySelectorAll('.minor-checkbox, .major-checkbox').forEach(checkbox => {
         checkbox.checked = false;
         checkbox.indeterminate = false;
     });
 });
+
+if (selectAliceWhitelistButton) {
+    selectAliceWhitelistButton.addEventListener('click', () => {
+        if (!categoryList || categoryList.length === 0) {
+            showStatus('请先点击“获取并显示分类”并确保分类已加载', true);
+            return;
+        }
+
+        const targetMajorCategories = [
+            "Taiwan Media",
+            "Japan Media",
+            "Hong Kong Media",
+            "AI Platform"
+        ];
+
+        const globalPlatformSpecificMinors = [
+            "DAZN",
+            "Hotstar",
+            "Disney+",
+            "Netflix",
+            "Amazon Prime Video:",
+            "TVBAnywhere+",
+            "Viu.com",
+            "Tiktok"
+        ];
+
+        categoryList.forEach((majorCat, majorIndex) => {
+            const majorCheckbox = document.getElementById(`major-${majorIndex}`);
+
+            if (targetMajorCategories.includes(majorCat.name)) {
+                if (majorCat.minors && majorCat.minors.length > 0) {
+                    majorCat.minors.forEach(minorCat => {
+                        const minorCheckboxId = `minor-${majorIndex}-${minorCat.name.replace(/\s+/g, '-')}`;
+                        const minorCheckbox = document.getElementById(minorCheckboxId);
+                        if (minorCheckbox && !minorCheckbox.checked) {
+                            minorCheckbox.checked = true;
+                            minorCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    });
+                }
+            } else if (majorCat.name === "Global Platform") {
+                if (majorCat.minors && majorCat.minors.length > 0) {
+                    majorCat.minors.forEach(minorCat => {
+                        const isIncluded = globalPlatformSpecificMinors.includes(minorCat.name);
+                        if (isIncluded) {
+                            const minorCheckboxId = `minor-${majorIndex}-${minorCat.name.replace(/\s+/g, '-')}`;
+                            const minorCheckbox = document.getElementById(minorCheckboxId);
+                            if (minorCheckbox && !minorCheckbox.checked) {
+                                minorCheckbox.checked = true;
+                                minorCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                            } else if (minorCheckbox && minorCheckbox.checked) {
+                            } else if (!minorCheckbox) {
+                            }
+                        }
+                    });
+                }
+            }
+        });
+        showStatus('Alice白名单规则已勾选');
+    });
+}
+
+if (generateXrayAlicePublicConfigButton) {
+    generateXrayAlicePublicConfigButton.addEventListener('click', () => {
+        const alicePublicConfig = {
+            "tag": "alice-public-socks",
+            "protocol": "socks",
+            "settings": {
+                "servers": [
+                    {
+                        "address": "[2a14:67c0:118::1]",
+                        "port": 35000,
+                        "users": [
+                            {
+                                "user": "alice",
+                                "pass": "alice..MVM"
+                            }
+                        ]
+                    }
+                ]
+            }
+        };
+        displayConfig(JSON.stringify(alicePublicConfig, null, 2), 'xray-alice-public');
+    });
+}

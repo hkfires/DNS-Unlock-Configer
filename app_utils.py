@@ -104,3 +104,10 @@ def _generate_sniproxy_config(url, selected_domains=None, enable_alice_socks=Fal
     except Exception as e:
         print(f"发生意外错误 (Web): {e}")
         raise RuntimeError(f"生成 config YAML 时发生意外错误: {e}")
+
+def _generate_xray_domain_list(selected_domains):
+    if not selected_domains:
+        return ""
+    
+    rules = [f"domain:{domain}" for domain in selected_domains]
+    return ",".join(rules)
