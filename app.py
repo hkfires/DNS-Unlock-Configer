@@ -1,8 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 import requests, re
-from app_utils import _extract_and_validate_common_params, _generate_adguard_domain_rules, _generate_dnsmasq_domain_rules, _generate_smardns_domain_rules, _generate_sniproxy_config, _generate_xray_domain_list
-
-STREAM_TEXT_LIST_URL = "https://raw.githubusercontent.com/1-stream/1stream-public-utils/refs/heads/main/stream.text.list"
+from app_utils import _extract_and_validate_common_params, _generate_adguard_domain_rules, _generate_dnsmasq_domain_rules, _generate_smardns_domain_rules, _generate_sniproxy_config, _generate_xray_domain_list, _parse_stream_text_list, _get_alice_whitelist_domains, STREAM_TEXT_LIST_URL
 
 app = Flask(__name__)
 
@@ -196,45 +194,7 @@ def api_get_categories():
         response = requests.get(STREAM_TEXT_LIST_URL, timeout=15)
         response.raise_for_status()
         content = response.text
-
-        categories_list = []
-        current_major_category_obj = None
-        current_minor_category_obj = None
-
-        major_regex = re.compile(r'^#\s*-+\s*>\s*(.+)')
-        minor_regex = re.compile(r'^#\s*>\s*(.+)')
-
-        for line in content.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-
-            major_match = major_regex.match(line)
-            minor_match = minor_regex.match(line)
-
-            if major_match:
-                major_name = major_match.group(1).strip()
-                if major_name == "Global Plaform":
-                    major_name = "Global Platform"
-                current_major_category_obj = {"name": major_name, "minors": []}
-                categories_list.append(current_major_category_obj)
-                current_minor_category_obj = None
-            elif minor_match and current_major_category_obj is not None:
-                 if not major_match:
-                    minor_name = minor_match.group(1).strip()
-                    current_minor_category_obj = {"name": minor_name, "domains": []}
-                    current_major_category_obj["minors"].append(current_minor_category_obj)
-            elif current_major_category_obj is not None and current_minor_category_obj is not None and not line.startswith('#'):
-                if '.' in line and ' ' not in line:
-                    current_minor_category_obj["domains"].append(line)
-
-        filtered_list = []
-        for major_cat in categories_list:
-            filtered_minors = [minor_cat for minor_cat in major_cat["minors"] if minor_cat["domains"]]
-            if filtered_minors:
-                major_cat["minors"] = filtered_minors
-                filtered_list.append(major_cat)
-
+        filtered_list = _parse_stream_text_list(content)
         return jsonify(filtered_list)
 
     except requests.exceptions.RequestException as e:
@@ -245,6 +205,17 @@ def api_get_categories():
         import traceback
         traceback.print_exc()
         return jsonify({"error": "处理分类列表时发生内部服务器错误。"}), 500
+
+@app.route('/api/get_alice_whitelist', methods=['GET'])
+def api_get_alice_whitelist():
+    try:
+        domains = _get_alice_whitelist_domains()
+        if not domains:
+            return jsonify({"error": "无法生成Alice白名单，请检查上游列表或服务器日志。"}), 500
+        return jsonify({"domains": domains})
+    except Exception as e:
+        print(f"Error in /api/get_alice_whitelist: {e}")
+        return jsonify({"error": "生成Alice白名单时发生内部服务器错误。"}), 500
 
 if __name__ == '__main__':
     print("启动 Flask 服务器...")

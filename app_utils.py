@@ -2,6 +2,8 @@ from flask import jsonify
 import requests
 import yaml
 
+STREAM_TEXT_LIST_URL = "https://raw.githubusercontent.com/1-stream/1stream-public-utils/refs/heads/main/stream.text.list"
+
 class QuotedString(str):
     pass
 
@@ -111,3 +113,76 @@ def _generate_xray_domain_list(selected_domains):
     
     rules = [f"domain:{domain}" for domain in selected_domains]
     return ",".join(rules)
+
+def _parse_stream_text_list(content):
+    import re
+    categories_list = []
+    current_major_category_obj = None
+    current_minor_category_obj = None
+
+    major_regex = re.compile(r'^#\s*-+\s*>\s*(.+)')
+    minor_regex = re.compile(r'^#\s*>\s*(.+)')
+
+    for line in content.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+
+        major_match = major_regex.match(line)
+        minor_match = minor_regex.match(line)
+
+        if major_match:
+            major_name = major_match.group(1).strip()
+            if major_name == "Global Plaform":
+                major_name = "Global Platform"
+            current_major_category_obj = {"name": major_name, "minors": []}
+            categories_list.append(current_major_category_obj)
+            current_minor_category_obj = None
+        elif minor_match and current_major_category_obj is not None:
+             if not major_match:
+                minor_name = minor_match.group(1).strip()
+                current_minor_category_obj = {"name": minor_name, "domains": []}
+                current_major_category_obj["minors"].append(current_minor_category_obj)
+        elif current_major_category_obj is not None and current_minor_category_obj is not None and not line.startswith('#'):
+            if '.' in line and ' ' not in line:
+                current_minor_category_obj["domains"].append(line)
+
+    filtered_list = []
+    for major_cat in categories_list:
+        filtered_minors = [minor_cat for minor_cat in major_cat["minors"] if minor_cat["domains"]]
+        if filtered_minors:
+            major_cat["minors"] = filtered_minors
+            filtered_list.append(major_cat)
+            
+    return filtered_list
+
+def _get_alice_whitelist_domains():
+    try:
+        content = "\n".join(_fetch_content(STREAM_TEXT_LIST_URL))
+        structured_data = _parse_stream_text_list(content)
+
+        target_major_categories = [
+            "Taiwan Media", "Japan Media", "Hong Kong Media", "AI Platform"
+        ]
+        global_platform_specific_minors = [
+            "DAZN", "Hotstar", "Disney+", "Netflix", "Amazon Prime Video:",
+            "TVBAnywhere+", "Viu.com", "Tiktok"
+        ]
+
+        alice_domains = set()
+
+        for major_cat in structured_data:
+            if major_cat['name'] in target_major_categories:
+                for minor_cat in major_cat['minors']:
+                    for domain in minor_cat['domains']:
+                        alice_domains.add(domain)
+            elif major_cat['name'] == "Global Platform":
+                for minor_cat in major_cat['minors']:
+                    if minor_cat['name'] in global_platform_specific_minors:
+                        for domain in minor_cat['domains']:
+                            alice_domains.add(domain)
+                            
+        return sorted(list(alice_domains))
+    except Exception as e:
+        print(f"在获取Alice白名单域名时发生错误: {e}")
+        return []
