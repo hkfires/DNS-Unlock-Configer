@@ -51,13 +51,19 @@ def api_generate_dnsmasq_config():
 
         rules = [
             "no-resolv",
-            "server=1.0.0.1",
-            "server=8.8.8.8",
+        ]
+
+        if ipv4_address:
+            rules.extend(["server=1.0.0.1", "server=8.8.8.8"])
+        if ipv6_address:
+            rules.extend(["server=2606:4700:4700::1001", "server=2001:4860:4860::8888"])
+
+        rules.extend([
             "cache-size=2048",
             "local-ttl=60",
             "listen-address=127.0.0.1",
             ""
-        ]
+        ])
         for domain in selected_domains:
             rules.extend(_generate_dnsmasq_domain_rules(domain, ipv4_address, ipv6_address))
 
@@ -79,13 +85,19 @@ def api_generate_smartdns_config():
 
         rules = [
             "bind [::]:53",
-            "server 1.0.0.1",
-            "server 8.8.8.8",
+        ]
+
+        if ipv4_address:
+            rules.extend(["server 1.0.0.1", "server 8.8.8.8"])
+        if ipv6_address:
+            rules.extend(["server 2606:4700:4700::1001", "server 2001:4860:4860::8888"])
+
+        rules.extend([
             "cache-size 32768",
             "cache-persist yes",
             "cache-file /etc/smartdns/cache/file",
             ""
-        ]
+        ])
         for domain in selected_domains:
             rules.extend(_generate_smardns_domain_rules(domain, ipv4_address, ipv6_address))
 
