@@ -51,9 +51,9 @@ def _generate_smardns_domain_rules(domain, ipv4_address, ipv6_address):
     rules = []
     if domain:
         if ipv4_address:
-            rules.append(f"nameserver /{domain}/{ipv4_address}")
+            rules.append(f"nameserver /{domain}/proxy_ipv4")
         if ipv6_address:
-            rules.append(f"nameserver /{domain}/{ipv6_address}")
+            rules.append(f"nameserver /{domain}/proxy_ipv6")
     return rules
 
 def _fetch_content(url):

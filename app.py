@@ -90,6 +90,11 @@ def api_generate_smartdns_config():
         if ipv6_address:
             rules.extend(["server 2606:4700:4700::1001", "server 2001:4860:4860::8888"])
 
+        if ipv4_address:
+            rules.append(f"server {ipv4_address} -group proxy_ipv4 -exclude-default-group")
+        if ipv6_address:
+            rules.append(f"server {ipv6_address} -group proxy_ipv6 -exclude-default-group")
+
         rules.extend([
             "cache-size 32768",
             "cache-persist yes",
