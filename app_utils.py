@@ -1,6 +1,7 @@
 from flask import jsonify
 import requests
 import yaml
+import json
 
 STREAM_TEXT_LIST_URL = "https://raw.githubusercontent.com/1-stream/1stream-public-utils/refs/heads/main/stream.text.list"
 
@@ -113,6 +114,13 @@ def _generate_xray_domain_list(selected_domains):
     
     rules = [f"domain:{domain}" for domain in selected_domains]
     return ",".join(rules)
+
+def _generate_singbox_domain_list(selected_domains):
+    if not selected_domains:
+        return ""
+    
+    domains_str = ",\n".join([f'  "{domain}"' for domain in selected_domains])
+    return f'"domain_suffix": [\n{domains_str}\n]'
 
 def _parse_stream_text_list(content):
     import re

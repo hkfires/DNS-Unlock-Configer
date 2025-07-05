@@ -7,6 +7,7 @@ const generateDnsmasqConfigButton = document.getElementById('generate-dnsmasq-co
 const generateSmartdnsConfigButton = document.getElementById('generate-smartdns-config');
 const generateXrayConfigButton = document.getElementById('generate-xray-config');
 const generateXrayAlicePublicConfigButton = document.getElementById('generate-xray-alice-public-config');
+const generateSingboxConfigButton = document.getElementById('generate-singbox-config');
 const configOutput = document.getElementById('config-output');
 const copyButton = document.getElementById('copy-config');
 const downloadButton = document.getElementById('download-config');
@@ -46,7 +47,8 @@ function displayConfig(configText, type) {
             (type === 'dnsmasq' ? 'Dnsmasq 配置' :
                 (type === 'smartdns' ? 'SmartDNS 配置' :
                     (type === 'xray' ? 'Xray 域名规则' :
-                        (type === 'xray-alice-public' ? 'Alice 出口配置' : '配置')))));
+                        (type === 'xray-alice-public' ? 'Alice 出口配置' :
+                        (type === 'singbox' ? 'Sing-box 域名规则' : '配置'))))));
     showStatus(`成功生成 ${typeName}`);
 }
 
@@ -606,6 +608,8 @@ downloadButton.addEventListener('click', () => {
         filename = "xray_rules.txt";
     } else if (currentConfigType === 'xray-alice-public') {
         filename = "xray_alice_public.json";
+    } else if (currentConfigType === 'singbox') {
+        filename = "singbox_rules.json";
     }
 
     const blob = new Blob([configText], { type: 'text/plain;charset=utf-8' });
@@ -784,5 +788,69 @@ if (generateXrayAlicePublicConfigButton) {
             }
         };
         displayConfig(JSON.stringify(alicePublicConfig, null, 2), 'xray-alice-public');
+    });
+}
+
+if (generateSingboxConfigButton) {
+    generateSingboxConfigButton.addEventListener('click', async () => {
+        let orderedSelectedDomains = [];
+        let seenDomains = new Set();
+
+        if (!categoryList || categoryList.length === 0 || Object.keys(categoryDomainLookup).length === 0) {
+            showStatus('请先点击“获取并显示分类”并确保分类已加载', true);
+            return;
+        }
+
+        categoryList.forEach((majorCat, majorIndex) => {
+            if (majorCat.minors && majorCat.minors.length > 0) {
+                majorCat.minors.forEach(minorCat => {
+                    const minorCheckboxId = `minor-${majorIndex}-${minorCat.name.replace(/\s+/g, '-')}`;
+                    const minorCheckbox = document.getElementById(minorCheckboxId);
+
+                    if (minorCheckbox && minorCheckbox.checked) {
+                        const domainsForCategory = categoryDomainLookup[minorCat.name];
+                        if (domainsForCategory) {
+                            domainsForCategory.forEach(domain => {
+                                if (!seenDomains.has(domain)) {
+                                    orderedSelectedDomains.push(domain);
+                                    seenDomains.add(domain);
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        });
+
+        if (orderedSelectedDomains.length === 0) {
+            showStatus('请至少选择一个包含有效域名的分类', true);
+            return;
+        }
+
+        configOutput.value = '正在生成 Sing-box 规则...';
+        statusMessage.style.display = 'none';
+
+        try {
+            const response = await fetch('/api/generate_singbox_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    selected_domains: orderedSelectedDomains
+                }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || `HTTP 错误: ${response.status}`);
+            }
+
+            displayConfig(result.config, 'singbox');
+
+        } catch (error) {
+            displayError(error.message || '无法连接到服务器或发生未知错误');
+        }
     });
 }
