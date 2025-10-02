@@ -1,4 +1,4 @@
 Flask
 requests
 PyYAML
-uWSGI
+gunicorn
