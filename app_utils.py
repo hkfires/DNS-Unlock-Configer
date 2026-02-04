@@ -68,17 +68,11 @@ def _fetch_content(url):
         print(f"错误：无法获取 URL 内容: {e}")
         raise
 
-def _generate_sniproxy_config(url, selected_domains=None, enable_alice_socks=False, allow_all_hosts=False):
+def _generate_sniproxy_config(url, selected_domains=None, allow_all_hosts=False):
     try:
         config_data = {
             'listen_addr': QuotedString(":443"),
         }
-
-        if enable_alice_socks:
-            config_data['enable_socks5'] = True
-            config_data['socks_addr'] = QuotedString("[2a14:67c0:118::1]:35000")
-            config_data['socks_username'] = "alice"
-            config_data['socks_password'] = "alice..MVM"
 
         if allow_all_hosts:
             config_data['allow_all_hosts'] = True
@@ -189,7 +183,7 @@ def _get_alice_whitelist_domains():
                     if minor_cat['name'] in global_platform_specific_minors:
                         for domain in minor_cat['domains']:
                             alice_domains.add(domain)
-                            
+
         return sorted(list(alice_domains))
     except Exception as e:
         print(f"在获取Alice白名单域名时发生错误: {e}")

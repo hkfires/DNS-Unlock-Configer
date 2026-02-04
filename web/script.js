@@ -6,7 +6,6 @@ const generateSniproxyConfigAllButton = document.getElementById('generate-snipro
 const generateDnsmasqConfigButton = document.getElementById('generate-dnsmasq-config');
 const generateSmartdnsConfigButton = document.getElementById('generate-smartdns-config');
 const generateXrayConfigButton = document.getElementById('generate-xray-config');
-const generateXrayAlicePublicConfigButton = document.getElementById('generate-xray-alice-public-config');
 const generateSingboxConfigButton = document.getElementById('generate-singbox-config');
 const configOutput = document.getElementById('config-output');
 const copyButton = document.getElementById('copy-config');
@@ -17,7 +16,6 @@ const categoryCheckboxesContainer = document.getElementById('category-checkboxes
 const selectAllNewButton = document.getElementById('select-all-categories-new');
 const deselectAllNewButton = document.getElementById('deselect-all-categories-new');
 const selectAliceWhitelistButton = document.getElementById('select-alice-whitelist');
-const enableAliceSocksCheckbox = document.getElementById('enable-alice-socks');
 
 let currentConfigType = '';
 let categoryList = [];
@@ -47,8 +45,7 @@ function displayConfig(configText, type) {
             (type === 'dnsmasq' ? 'Dnsmasq 配置' :
                 (type === 'smartdns' ? 'SmartDNS 配置' :
                     (type === 'xray' ? 'Xray 域名规则' :
-                        (type === 'xray-alice-public' ? 'Alice 出口配置' :
-                        (type === 'singbox' ? 'Sing-box 域名规则' : '配置'))))));
+                        (type === 'singbox' ? 'Sing-box 域名规则' : '配置')))));
     showStatus(`成功生成 ${typeName}`);
 }
 
@@ -367,8 +364,7 @@ generateSniproxyConfigButton.addEventListener('click', async () => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                selected_domains: orderedSelectedDomains,
-                enable_alice_socks: enableAliceSocksCheckbox.checked
+                selected_domains: orderedSelectedDomains
             })
         });
         const result = await response.json();
@@ -394,9 +390,7 @@ generateSniproxyConfigAllButton.addEventListener('click', async () => {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                enable_alice_socks: enableAliceSocksCheckbox.checked
-            })
+            body: JSON.stringify({})
         });
         const result = await response.json();
 
@@ -606,8 +600,6 @@ downloadButton.addEventListener('click', () => {
         filename = "smartdns.conf";
     } else if (currentConfigType === 'xray') {
         filename = "xray_rules.txt";
-    } else if (currentConfigType === 'xray-alice-public') {
-        filename = "xray_alice_public.json";
     } else if (currentConfigType === 'singbox') {
         filename = "singbox_rules.json";
     }
@@ -709,7 +701,7 @@ deselectAllNewButton.addEventListener('click', () => {
 if (selectAliceWhitelistButton) {
     selectAliceWhitelistButton.addEventListener('click', () => {
         if (!categoryList || categoryList.length === 0) {
-            showStatus('请先点击“获取并显示分类”并确保分类已加载', true);
+            showStatus('请先点击"获取并显示分类"并确保分类已加载', true);
             return;
         }
 
@@ -764,30 +756,6 @@ if (selectAliceWhitelistButton) {
             }
         });
         showStatus('Alice白名单规则已勾选');
-    });
-}
-
-if (generateXrayAlicePublicConfigButton) {
-    generateXrayAlicePublicConfigButton.addEventListener('click', () => {
-        const alicePublicConfig = {
-            "tag": "alice-public-socks",
-            "protocol": "socks",
-            "settings": {
-                "servers": [
-                    {
-                        "address": "[2a14:67c0:118::1]",
-                        "port": 35000,
-                        "users": [
-                            {
-                                "user": "alice",
-                                "pass": "alice..MVM"
-                            }
-                        ]
-                    }
-                ]
-            }
-        };
-        displayConfig(JSON.stringify(alicePublicConfig, null, 2), 'xray-alice-public');
     });
 }
 
